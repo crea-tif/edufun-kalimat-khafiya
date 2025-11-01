@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>EDUFUN • كلمات خفية للأطفال</title>
+<style>
+:root{
+  --ink:#0f172a; --accent:#1f7ae0; --ok:#16a34a; --warn:#f59e0b;
+  --glass: rgba(255,255,255,0.88);
+  --cell: 44px; /* يتغير تلقائيا */
+}
+
+/* خلفية وهوية */
+html,body{height:100%}
+body{
+  margin:0; color:var(--ink);
+  font-family:system-ui,-apple-system,"Noto Kufi Arabic","Cairo",Tahoma,Arial;
+  background: linear-gradient(35deg,#55c6ff 0%, #1f7ae0 100%) fixed;
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:-2;
+  background:url('assets/edufun-bg.png') center/cover no-repeat;
+  filter:saturate(108%) contrast(110%);
+}
+body::after{
+  content:""; position:fixed; inset:auto 0 16px 16px; width:160px; height:70px; z-index:-1;
+  background:url("edufun-logo.png") no-repeat left/contain;
+  opacity:.10; pointer-events:none;
+}
+
+/* حاويات */
+header, .card{
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  border:1px solid rgba(255,255,255,0.6);
+  border-radius:18px;
+  box-shadow:0 10px 30px rgba(31,122,224,.18);
+}
+.wrap{max-width:1000px;margin:auto;padding:12px}
+
+/* الشريط العلوي */
+header{margin-bottom:12px} /* غير sticky على الهاتف لتفادي التداخل */
+.brandbar{display:flex;align-items:center;gap:12px}
+.brand{height:60px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.16))}
+@media (max-width:520px){.brand{height:50px}}
+h1{margin:0;font-size:22px}
+
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center}
+select,button{padding:10px 12px;border:1px solid rgba(255,255,255,0.65);background:#fff;border-radius:12px;font-size:14px}
+button.primary{background:#1f7ae0;border-color:#1f7ae0;color:#fff;box-shadow:0 6px 16px rgba(31,122,224,.25)}
+
+/* تخطيط صفحة */
+main .wrap{display:grid;grid-template-columns:1fr 320px;gap:16px}
+.grid-wrap{overflow:hidden;height:var(--gridH,70vh);}
+@media (max-width:900px){
+  main .wrap{grid-template-columns:1fr}
+  .grid-wrap{height:var(--gridH,68vh)}
+  header{position:static}
+}
+
+/* الشبكة */
+.grid{
+  --n:10;
+  display:grid;
+  grid-template-columns:repeat(var(--n),var(--cell));
+  grid-auto-rows:var(--cell);
+  gap:4px; padding:6px;
+  user-select:none; touch-action:none;
+}
+.cell{
+  width:var(--cell); height:var(--cell);
+  border-radius:14px; background:#fff; border:1px solid #eaf1fb;
+  display:flex; align-items:center; justify-content:center;
+  font-size:clamp(16px,calc(var(--cell)*.55),28px);
+  font-weight:800; transition:transform .12s, background .3s, border-color .3s;
+  box-shadow:0 2px 6px rgba(31,122,224,.08);
+}
+.cell.preview{ outline:2px dashed #1f7ae0; }        /* أثناء السحب */
+.cell.valid-preview{ outline:2px solid var(--warn);} /* تطابق كامل قبل الإفلات */
+/* تلميح واضح */
+.cell.hint{
+  background:#fff3bf; border-color:#ffd04a;
+  box-shadow:inset 0 0 0 2px #ffd04a33, 0 2px 6px rgba(31,122,224,.08);
+}
+.cell.found{background:#e8f7ee;border-color:#b7e3c8;color:#055a43}
+.cell.flash{animation:flashOk 1s ease-in-out 3}
+@keyframes flashOk{0%,100%{background:#e8f7ee}50%{background:#16a34a;color:#fff;transform:scale(1.05)}}
+
+/* لوحة الكلمات */
+aside.card{padding:14px}
+h3{margin:0 0 8px}
+.target{display:flex;flex-wrap:wrap;gap:8px}
+.badge{background:#fff;border:1px solid #e5eefc;padding:8px 11px;border-radius:999px;font-size:14px;box-shadow:0 1px 3px rgba(31,122,224,.08)}
+.badge.found{background:#e8f7ee;border-color:#b7e3c8;color:#055a43}
+.help{font-size:13px;color:#29425f;line-height:1.7}
+.footer{font-size:12px;color:#eef6ff;margin-top:6px;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+hr{border:none;border-top:1px solid #e7f0ff;margin:10px 0}
+</style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f7ae0">
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
+</script>
+
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brandbar">
+      <img class="brand" src="assets/edufun-logo.png" alt="EDUFUN">
+      <h1>كلمات خفية للأطفال</h1>
+    </div>
+    <div class="controls">
+      <label>الفئة:
+        <select id="category"></select>
+      </label>
+      <label>الصعوبة:
+        <select id="difficulty">
+          <option value="easy" selected>سهل</option>
+          <option value="medium">متوسط</option>
+          <option value="hard">صعب</option>
+        </select>
+      </label>
+      <button id="regen" class="primary">إعادة توليد</button>
+      <button id="toggleHints">إظهار/إخفاء تلميحات</button>
+      <span id="status" style="margin-inline-start:auto;font-size:13px;opacity:.9"></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <section class="card grid-wrap">
+      <div id="grid" class="grid"></div>
+      <div class="footer">اسحب بالإصبع من أول حرف إلى آخره. الاتجاهات المسموحة: أفقي أو عمودي (بدون قطريات).</div>
+    </section>
+
+    <aside class="card">
+      <h3 id="listTitle">الكلمات المستهدفة</h3>
+      <div class="target" id="targets"></div>
+      <hr>
+      <div class="help">
+        غيّر “الفئة” و”الصعوبة” من الأعلى.  
+        سهل= 8×8 مع 6–8 كلمات، متوسط= 10×10، صعب= 12×12 مع كلمات أكثر.  
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+/* ——— القوائم ——— */
+const CATS = {
+  "الألوان": ["أحمر","أزرق","أخضر","أصفر","برتقالي","بنفسجي","وردي","أسود","أبيض","بني","ذهبي","فضي"],
+  "الحيوانات": ["قطة","كلب","حصان","بقرة","غزال","أسد","نمر","ثعلب","جمل","سمكة","طيور","ببغاء","أرنب","فيل","زرافة","ذئب","قرد","نحلة"],
+  "الفواكه": ["تفاح","موز","برتقال","عنب","فراولة","كمثرى","خوخ","رمان","كيوي","بطيخ","شمام","تين","مانجو","أناناس"],
+  "أشياء الصف": ["قلم","ممحاة","مسطرة","دفتر","كتاب","حقيبة","سبورة","طباشير","مسنّن","مبراة","مقص","لاصق"],
+  "وسائل النقل": ["سيارة","حافلة","دراجة","قطار","طائرة","سفينة","مترو","شاحنة","دراجة نارية","قارب"],
+  "الملابس": ["قميص","بنطال","حذاء","قبعة","وشاح","فستان","معطف","جوارب","قميص داخلي","حزام"],
+  "الخضار": ["طماطم","خيار","بطاطس","جزر","خس","فلفل","بصل","ثوم","قرنبيط","باذنجان","سبانخ"],
+  "الأشكال": ["دائرة","مربع","مثلث","مستطيل","نجمة","قلب","بيضاوي","معين"]
+};
+
+/* ——— عناصر DOM ——— */
+const gridEl = document.getElementById('grid');
+const catSel = document.getElementById('category');
+const diffSel = document.getElementById('difficulty');
+const btnRegen = document.getElementById('regen');
+const btnHints = document.getElementById('toggleHints');
+const targetsEl = document.getElementById('targets');
+const listTitle = document.getElementById('listTitle');
+const statusEl = document.getElementById('status');
+
+/* ——— حالة ——— */
+let N=10, CHUNK=8, cells=[], board=[], isWord=[], names=[], remaining=new Set(), hintsOn=false;
+const AR_RANDOM="ابتثجحخدذرزسشصضطظعغفقكلمنهوي";
+const randLetter=()=>AR_RANDOM[Math.floor(Math.random()*AR_RANDOM.length)];
+const normalize=s=>s.replace(/\s+/g,'').replace(/ـ/g,'').replace(/[^\u0600-\u06FF]/g,'');
+const idx=(r,c)=>r*N+c, inBounds=(r,c)=>r>=0&&r<N&&c>=0&&c<N;
+
+/* ملء قائمة الفئات */
+Object.keys(CATS).forEach((k,i)=>{const o=document.createElement('option');o.value=k;o.textContent=k;catSel.appendChild(o);});
+catSel.value="الألوان";
+
+/* الصعوبة ← تحدد N و CHUNK */
+function applyDifficulty(){
+  const d=diffSel.value;
+  if(d==="easy"){ N=8; CHUNK=7; }
+  else if(d==="medium"){ N=10; CHUNK=9; }
+  else { N=12; CHUNK=12; }
+  gridEl.style.setProperty('--n',N);
+}
+
+/* بناء الشبكة */
+function buildGrid(){
+  gridEl.innerHTML=''; cells=[];
+  for(let i=0;i<N*N;i++){ const d=document.createElement('div'); d.className='cell'; d.dataset.index=i; gridEl.appendChild(d); cells.push(d); }
+}
+
+/* اختيار كلمات مناسبة لطول الشبكة */
+function pickNames(cat){
+  const pool = CATS[cat].filter(w=>normalize(w).length<=N);
+  const arr = pool.slice();
+  for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];}
+  return arr.slice(0, Math.min(CHUNK, arr.length));
+}
+
+/* وضع الكلمات (أفقي يمين←يسار ويسار→يمين، وعمودي أعلى↓أسفل وأسفل↑أعلى) */
+function tryPlace(word){
+  const chars=normalize(word).split(''), L=chars.length;
+  const dirs=[{dr:0,dc:-1},{dr:0,dc:1},{dr:1,dc:0},{dr:-1,dc:0}];
+  for(let t=0;t<500;t++){
+    const dir=dirs[(Math.random()*dirs.length)|0];
+    let r = (dir.dr===-1? L-1 : 0) + Math.floor(Math.random()*(N - Math.max(0,dir.dr)*(L-1) - Math.max(0,-dir.dr)*(L-1)));
+    let c = (dir.dc=== 1? 0   : 0);
+    if(dir.dc===-1) c = (L-1)+Math.floor(Math.random()*(N-(L-1)));
+    else if(dir.dc=== 1) c = Math.floor(Math.random()*(N-(L-1)));
+    else c = Math.floor(Math.random()*N);
+    if(dir.dr=== 1) r = Math.floor(Math.random()*(N-(L-1)));
+    else if(dir.dr===-1) r = (L-1)+Math.floor(Math.random()*(N-(L-1)));
+
+    let ok=true;
+    for(let k=0;k<L;k++){
+      const rr=r+dir.dr*k, cc=c+dir.dc*k;
+      if(!inBounds(rr,cc) || (board[rr][cc] && board[rr][cc]!==chars[k])){ ok=false; break; }
+    }
+    if(!ok) continue;
+    for(let k=0;k<L;k++){
+      const rr=r+dir.dr*k, cc=c+dir.dc*k;
+      board[rr][cc]=chars[k]; isWord[rr][cc]=true;
+    }
+    return true;
+  }
+  return false;
+}
+
+/* توليد مستوى */
+function generate(){
+  applyDifficulty();
+  names = pickNames(catSel.value);
+  names.sort((a,b)=>normalize(b).length-normalize(a).length);
+  board  = Array.from({length:N},()=>Array(N).fill(null));
+  isWord = Array.from({length:N},()=>Array(N).fill(false));
+
+  let placed=true;
+  for(const w of names){ if(!tryPlace(w)){ placed=false; break; } }
+  if(!placed){
+    // لو ازدحم، قلّل قليلاً وأعد
+    while(names.length>3){
+      names.pop();
+      board  = Array.from({length:N},()=>Array(N).fill(null));
+      isWord = Array.from({length:N},()=>Array(N).fill(false));
+      placed=true;
+      for(const w of names){ if(!tryPlace(w)){ placed=false; break; } }
+      if(placed) break;
+    }
+  }
+
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++) if(!board[r][c]) board[r][c]=randLetter();
+  remaining=new Set(names);
+  buildGrid();
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++) cells[idx(r,c)].textContent=board[r][c];
+  renderTargets(); updateStatus(); refitAll(); applyHints();
+}
+
+/* واجهة المستهدفات */
+function renderTargets(){
+  targetsEl.innerHTML='';
+  listTitle.textContent=`الكلمات المستهدفة — (${names.length} كلمة)`;
+  names.forEach(n=>{ const b=document.createElement('span'); b.className='badge'; b.dataset.name=n; b.textContent=n; targetsEl.appendChild(b); });
+}
+function markBadgeFound(n){ [...targetsEl.children].forEach(x=>{ if(x.dataset.name===n) x.classList.add('found'); }); }
+function updateStatus(){ statusEl.textContent=`المتبقي: ${remaining.size} / ${names.length}`; }
+
+/* جمع المسار */
+function collectLine(f,t){
+  if(f.r===t.r){ // أفقي
+    const L=[]; const step = (t.c>f.c)? 1 : -1;
+    for(let c=f.c; c!==t.c+step; c+=step) L.push({r:f.r,c});
+    return L;
+  }
+  if(f.c===t.c){ // عمودي
+    const L=[]; const step = (t.r>f.r)? 1 : -1;
+    for(let r=f.r; r!==t.r+step; r+=step) L.push({r,c:f.c});
+    return L;
+  }
+  return null;
+}
+function textFrom(L){ let s=''; for(const p of L) s+=board[p.r][p.c]; return s; }
+function isExact(L){ const p=textFrom(L); for(const n of remaining) if(normalize(n)===p) return n; return null; }
+function isPrefix(L){ const p=textFrom(L); for(const n of remaining) if(normalize(n).startsWith(p)) return true; return false; }
+
+/* صوتيات + احتفال */
+let actx=null;
+function ensureAudio(){ if(!actx){ actx=new (window.AudioContext||window.webkitAudioContext)(); } }
+function tone(freq, dur=0.12, type='sine', gain=0.09, when=0){
+  ensureAudio(); const t=actx.currentTime+when;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type=type; o.frequency.value=freq;
+  g.gain.value=gain; g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(actx.destination); o.start(t); o.stop(t+dur);
+}
+function sDing(){ tone(880,0.10,'triangle',0.11,0); tone(1320,0.12,'triangle',0.09,0.07); }
+function sWin(){ [660,880,990,1320].forEach((f,i)=>tone(f,0.16,'square',0.10,i*0.08)); confetti(); }
+function confetti(){
+  const c=document.createElement('canvas'); c.width=innerWidth; c.height=innerHeight;
+  Object.assign(c.style,{position:'fixed',inset:'0',pointerEvents:'none',zIndex:9999});
+  document.body.appendChild(c);
+  const ctx=c.getContext('2d'), pcs=[], cols=['#ff6b6b','#ffd166','#06d6a0','#1f7ae0','#8338ec'];
+  for(let i=0;i<160;i++) pcs.push({x:Math.random()*c.width,y:-20-Math.random()*200,r:6+Math.random()*6,col:cols[(Math.random()*cols.length)|0],vx:-1+Math.random()*2,vy:2+Math.random()*2,rot:Math.random()*Math.PI,vr:(-0.1+Math.random()*0.2)});
+  let t=0; (function a(){ ctx.clearRect(0,0,c.width,c.height);
+    pcs.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.rot+=p.vr; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.fillStyle=p.col; ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r); ctx.restore(); });
+    if(t++<180) requestAnimationFrame(a); else c.remove();
+  })();
+}
+
+/* لمس/سحب */
+let start=null, lastPreview=[];
+function posFromEl(el){ const i=+el.dataset.index; return {r:Math.floor(i/N), c:i%N}; }
+function clearPreview(){ lastPreview.forEach(p=>cells[idx(p.r,p.c)].classList.remove('preview','valid-preview')); lastPreview=[]; }
+function setPreview(L, exact=false){ clearPreview(); if(!L) return; L.forEach(p=>cells[idx(p.r,p.c)].classList.add(exact?'valid-preview':'preview')); lastPreview=L.slice(); }
+function applyHints(){
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const el=cells[idx(r,c)];
+    const found=el.classList.contains('found');
+    el.classList.toggle('hint', hintsOn && isWord[r][c] && !found);
+  }
+}
+
+gridEl.addEventListener('pointerdown', e=>{
+  const t=e.target.closest('.cell'); if(!t) return;
+  ensureAudio(); e.preventDefault(); gridEl.setPointerCapture(e.pointerId);
+  start=posFromEl(t); setPreview([start], false);
+});
+gridEl.addEventListener('pointermove', e=>{
+  if(!start) return;
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const cell=(el && el.classList && el.classList.contains('cell'))? el : e.target.closest('.cell');
+  if(!cell) return;
+  const end=posFromEl(cell);
+  const L=collectLine(start,end);
+  if(!L){ clearPreview(); return; }
+  const exact=isExact(L);
+  if(exact){ setPreview(L,true); }
+  else if(isPrefix(L)){ setPreview(L,false); }
+  else{ clearPreview(); }
+});
+function commitIfValid(){
+  if(!start || !lastPreview.length) return;
+  const exactName=isExact(lastPreview);
+  if(exactName){
+    remaining.delete(exactName);
+    lastPreview.forEach(p=>cells[idx(p.r,p.c)].classList.add('found','flash'));
+    markBadgeFound(exactName); updateStatus(); sDing();
+    if(remaining.size===0){ statusEl.textContent="أحسنت! ✅"; sWin(); }
+    applyHints();
+  }
+  clearPreview(); start=null;
+}
+gridEl.addEventListener('pointerup', commitIfValid);
+gridEl.addEventListener('pointercancel', ()=>{ clearPreview(); start=null; });
+
+/* أزرار */
+btnRegen.onclick=()=>generate();
+btnHints.onclick=()=>{ hintsOn=!hintsOn; btnHints.setAttribute('aria-pressed', hintsOn?'true':'false'); applyHints(); };
+catSel.onchange=()=>generate();
+diffSel.onchange=()=>generate();
+
+/* ملاءمة الشبكة بلا تمرير */
+function sizeGridWrap(){
+  const header=document.querySelector('header');
+  const wrap=gridEl.parentElement;
+  const H=Math.max(280, window.innerHeight - header.getBoundingClientRect().height - 32);
+  wrap.style.setProperty('--gridH', H+'px');
+}
+function fitGrid(){
+  const wrap=gridEl.parentElement, styles=getComputedStyle(gridEl);
+  const gap=parseFloat(styles.gap)||0, W=wrap.clientWidth-4, H=wrap.clientHeight-4;
+  const cW=(W-gap*(N-1))/N, cH=(H-gap*(N-1))/N;
+  document.documentElement.style.setProperty('--cell', Math.floor(Math.max(22, Math.min(cW, cH)))+'px');
+}
+function refitAll(){ sizeGridWrap(); fitGrid(); }
+window.addEventListener('resize', refitAll);
+new ResizeObserver(refitAll).observe(document.body);
+
+/* تشغيل أولي */
+generate();
+refitAll();
+</script>
+</body>
+</html>
